@@ -1,7 +1,4 @@
-const canvas = document.getElementById ("myCanvas");
-const ctx = canvas.getContext ("2d");
-const width = canvas.width;
-const size = width/8;
+
 
 //black_master
 //white_master should be the name
@@ -13,103 +10,126 @@ var white_master;
 //stores position of all pieces
 //row 1 column 0 is stored at index 8
 var board = [];
-
 //stores the places that the other player can move
 var possible_moves = [];
 
+//black: #d48c4c
+//white: #fccca4
+
+var cur_block = null;
+var cur_turn = "white";
+
 window.onload = function () {
-	// canvas = document.getElementById ("myCanvas")
-	//its a square so width = height
+	
+	// fps = 20;
+	//setInterval (Fixed_Update, 1000/fps);
+	black_master = new Piece ("master", "black", -1, -1);
+	white_master = new Piece ("master", "white", -1, -1);
+	// q = new Piece ("bishop", "black", 4, 4);
 
-	fps = 20;
-	setInterval (Fixed_Update, 1000/fps);
+	Initialise_Game  ();
 
-	// p = new Piece ("pawn", "white", 5, 1);
-	board[27] = 1;
+	setTimeout (function() {
+		Manual_Update ();
+	}, 100);
 
-	q = new Piece ("bishop", "black", 4, 4);
-	// p.Calculate_Moves_pawn ();
+	// Manual_Update ();
+
+	canvas.addEventListener ("mousemove", Calculate_Mouse_Pos);
+
+	canvas.addEventListener ("mousedown", function (evt) {
+		// - check if empty
+		// - if not check if its in moves_available
+		// - else change block
+
+		if (cur_block == null) {
+			Change_Cur_Block ();
+		} else if (cur_block.Search_Moves (mouse_x, mouse_y)) {
+			cur_block.Move_Block (mouse_x, mouse_y);
+			cur_block = null;
+			Switch_Turn ();
+		} else {
+			Change_Cur_Block ();
+		}
+		console.log(cur_block);
+		if (cur_block != null) {
+
+			cur_block.Calculate_Moves ();
+		}
+
+		Manual_Update ();
+	});
+
+	// document.addEventListener ("keydown", function(evt) {
+	// 		//for debugging
+	// 		if (evt.keyCode == 32) {
+	//
+	// 		}
+	// });
+}
+
+
+
+function Initialise_Game () {
+
 
 	//initialise board
+	board.length = 0;
+	possible_moves.length = 0;
 	for (var i = 0; i < 64; i++) {
 		board.push (null);
 		possible_moves.push (0);
 	}
+	//add black pieces
+	black_master.Add_Block ("king", "black", 4, 0);
+	black_master.Add_Block ("queen", "black", 3, 0);
+	black_master.Add_Block ("rook", "black", 0, 0);
+	black_master.Add_Block ("rook", "black", 7, 0);
+	black_master.Add_Block ("horse", "black", 1, 0);
+	black_master.Add_Block ("horse", "black", 6, 0);
+	black_master.Add_Block ("bishop", "black", 2, 0);
+	black_master.Add_Block ("bishop", "black", 5, 0);
+	for (var i = 0; i < 8; i++) {
+		black_master.Add_Block ("pawn", "black", i, 1);
+	}
 
-	document.addEventListener ("keydown", function(evt) {
-		// if (evt.keyCode == 32) {
-		// 	//for debugging
-		// 	delete cursor;
-		// 	cursor = null;
-		// }
-		switch (evt.keyCode ) {
-			//w
-			case 87:
-				q.y--;
-				break;
-				//a
-			case 65:
-				q.x--;
-				break;
+	//add white pieces
 
-			case 83:
-				q.y++;
-				break;
-			case 68:
-				q.x++;
-				break;
-		}
-		q.moves.length = 0;
-		q.Calculate_Moves ();
-		console.log(q.moves);
-	})
+	white_master.Add_Block ("king", "white", 4, 7);
+	white_master.Add_Block ("queen", "white", 3, 7);
+	white_master.Add_Block ("rook", "white", 0, 7);
+	white_master.Add_Block ("rook", "white", 7, 7);
+	white_master.Add_Block ("horse", "white", 1, 7);
+	white_master.Add_Block ("horse", "white", 6, 7);
+	white_master.Add_Block ("bishop", "white", 2, 7);
+	white_master.Add_Block ("bishop", "white", 5, 7);
+	for (var i = 0; i < 8; i++) {
+		white_master.Add_Block ("pawn", "white", i, 6);
+	}
 }
 
-function Fixed_Update () {
+function Manual_Update () {
 
 	ctx.clearRect (0, 0, width, width);
 
 	//draw board
-	var col_t = "black";
-	for (var i = 0; i < 8; i++) {
-		for (var j = 0; j < 8; j++) {
-			Draw_Rect (i*size, j*size, size, size, col_t);
+	Draw_Board ();
 
-			if (col_t == "white") {
-				col_t = "black";
-			} else {
-				col_t = "white";
-			}
-
-		}
-		if (col_t == "white") {
-			col_t = "black";
-		} else {
-			col_t = "white";
-		}
-
-	}
 	//draw block
-	for (var i = 0; i < 8; i++) {
-		for (var j = 0; j < 8; j++) {
-			if (board[i*8 +j] != null) {
-				Draw_Rect (j*size, i*size, size, size, "rgba(0,0,255,0.5)");
-			}
-		}
+	// for (var i = 0; i < 8; i++) {
+	// 	for (var j = 0; j < 8; j++) {
+	// 		if (board[i*8 +j] != null) {
+	// 			Draw_Rect (j*size, i*size, size, size, "rgba(0,0,255,0.5)");
+	// 		}
+	// 	}
+	// }
+
+	if (cur_block != null) {
+		//draw possible moves
+		Draw_Possible_Moves (cur_block);
 	}
 
-	//draw possible moves
-	Draw_Rect (q.x*size, q.y*size, size, size, "rgba(0,255,0, 0.5)");
-	for (var i = 0; i < q.moves.length; i++) {
-		Draw_Rect (q.moves[i].x*size, q.moves[i].y*size, size, size, "rgba(255,0,0,0.5)");
-	}
+	black_master.next.Draw ();
+	white_master.next.Draw ();
 
-	q.Draw ();
-}
-
-function Draw_Rect (x, y, l, b, col) {
-	ctx.beginPath ();
-	ctx.fillStyle = col;
-	ctx.fillRect(x,y,l,b);
-	ctx.closePath ();
 }

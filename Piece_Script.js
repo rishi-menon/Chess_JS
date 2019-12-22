@@ -2,10 +2,6 @@
 var pawn_moved = false;
 var king_check = false;
 
-function Index_Abs (x, y) {
-	return (x*8 + y);
-}
-
 function Piece (type, col, x, y) {
 	// master
 	// pawn
@@ -15,27 +11,78 @@ function Piece (type, col, x, y) {
 	// queen
 	// king
 
+	this.col = col;
+	this.type = type;
+	this.next = null;
+	this.prev = null;
+
 	if (type != "master") {
 		//stores the x,y index on the board
 		this.x = x;
 		this.y = y;
 		this.img = new Image;
 		this.img.src = "Pieces/" + type + "_" + col + ".png";
-		console.log(this.img.src);
 
 		this.has_moved = false;
 		this.moves = [];
+
+		board[Index_Abs(x, y)] = this;
+		this.Calculate_Moves ();
 	}
-	this.col = col;
-	this.type = type;
+}
+
+Piece.prototype.Add_Block = function (type, col, x, y) {
+	if (this.next == null) {
+		this.next = new Piece (type, col, x, y);
+		this.next.prev = this;
+	} else {
+		this.next.Add_Block (type, col, x, y);
+	}
+}
+
+Piece.prototype.Search_Moves = function (x, y) {
+	//linear search
+	var len = this.moves.length;
+	for (var i = 0; i < len; i++) {
+		if (x == this.moves[i].x && y == this.moves[i].y) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+Piece.prototype.Move_Block = function (x, y) {
+
+	//move block
+	board[Index_Abs (this.x, this.y)] = null;
+	//capture enemy block if necessary
+	if (board[Index_Abs (x, y)] != null) {
+		//the block has to be opposite block as moves[] cannot have the block of same col
+		board[Index_Abs (x, y)].Delete ();
+	}
+	board[Index_Abs (x, y)] = this;
+	this.x = x;
+	this.y = y;
+	this.has_moved = true;
+	this.Calculate_Moves ();
+}
+
+Piece.prototype.Delete_All = function () {
+	if (this.next != null) {
+		this.next.Delete_All ();
+	}
 	this.next = null;
 	this.prev = null;
+	delete this.img;
 }
 
 Piece.prototype.Delete = function () {
 	// board[this.x*8 + this.y] = null;
 	this.prev.next = this.next;
-	this.next.prev = this.prev;
+	if (this.next != null)
+		this.next.prev = this.prev;
+	board[Index_Abs (this.x, this.y)] = null;
 	delete this.img;
 }
 
@@ -50,7 +97,7 @@ Piece.prototype.Draw = function () {
 
 //returns 1D array index of a block (x,y) positions relative to this
 Piece.prototype.Index = function (x, y) {
-	return (this.x+x)*8 + (this.y+y);
+	return (this.x+x) + (this.y+y)*8;
 }
 //pushes (x,y) position relative to this object to this.possible moves
 Piece.prototype.Push_rel = function (x, y) {
@@ -161,6 +208,9 @@ Piece.prototype.Calculate_Moves_rook = function () {
 
 		if (board[Index_Abs (i, this.y)] == null) {
 			this.Push_Abs (i, this.y);
+		} else if (board[Index_Abs (i, this.y)].col != this.col) {
+			this.Push_Abs (i, this.y);
+			break;
 		} else {
 			break;
 		}
@@ -169,6 +219,9 @@ Piece.prototype.Calculate_Moves_rook = function () {
 	for (var i = this.x-1; i > -1; i--) {
 		if (board[Index_Abs (i, this.y)] == null) {
 			this.Push_Abs (i, this.y);
+		} else if (board[Index_Abs (i, this.y)].col != this.col){
+			this.Push_Abs (i, this.y);
+			break;
 		} else {
 			break;
 		}
@@ -178,6 +231,9 @@ Piece.prototype.Calculate_Moves_rook = function () {
 	for (var i = this.y+1; i < 8; i++) {
 		if (board[Index_Abs (this.x, i)] == null) {
 			this.Push_Abs (this.x, i);
+		} else if (board[Index_Abs (this.x, i)].col != this.col) {
+			this.Push_Abs (this.x, i);
+			break;
 		} else {
 			break;
 		}
@@ -186,6 +242,9 @@ Piece.prototype.Calculate_Moves_rook = function () {
 	for (var i = this.y-1; i > -1; i--) {
 		if (board[Index_Abs (this.x, i)] == null) {
 			this.Push_Abs (this.x, i);
+		} else if (board[Index_Abs (this.x, i)].col != this.col) {
+			this.Push_Abs (this.x, i);
+			break;
 		} else {
 			break;
 		}
@@ -196,31 +255,39 @@ Piece.prototype.Calculate_Moves_rook = function () {
 Piece.prototype.Calculate_Moves_horse = function () {
 	//check top
 	if (this.Is_Valid_Pos (1, -2)) {
-		this.Push_rel (1, -2);
+		if (board[this.Index (1, -2)] == null || board[this.Index (1, -2)].col != this.col)
+			this.Push_rel (1, -2);
 	}
 	if (this.Is_Valid_Pos (-1, -2)) {
-		this.Push_rel (-1, -2);
+		if (board[this.Index (-1, -2)] == null || board[this.Index (-1, -2)].col != this.col)
+			this.Push_rel (-1, -2);
 	}
 	//check down
 	if (this.Is_Valid_Pos (1, 2)) {
-		this.Push_rel (1, 2);
+		if (board[this.Index (1, 2)] == null || board[this.Index (1, 2)].col != this.col)
+			this.Push_rel (1, 2);
 	}
 	if (this.Is_Valid_Pos (-1, 2)) {
-		this.Push_rel (-1, 2);
+		if (board[this.Index (-1, 2)] == null || board[this.Index (-1, 2)].col != this.col)
+			this.Push_rel (-1, 2);
 	}
 	//chec left
 	if (this.Is_Valid_Pos (-2, 1)) {
-		this.Push_rel (-2, 1);
+		if (board[this.Index (-2, 1)] == null || board[this.Index (-2, 1)].col != this.col)
+			this.Push_rel (-2, 1);
 	}
 	if (this.Is_Valid_Pos (-2, -1)) {
-		this.Push_rel (-2, -1);
+		if (board[this.Index (-2, -1)] == null || board[this.Index (-2, -1)].col != this.col)
+			this.Push_rel (-2, -1);
 	}
 	//check right
 	if (this.Is_Valid_Pos (2, 1)) {
-		this.Push_rel (2, 1);
+		if (board[this.Index (2, 1)] == null || board[this.Index (2, 1)].col != this.col)
+			this.Push_rel (2, 1);
 	}
 	if (this.Is_Valid_Pos (2, -1)) {
-		this.Push_rel (2, -1);
+		if (board[this.Index (2, -1)] == null || board[this.Index (2, -1)].col != this.col)
+			this.Push_rel (2, -1);
 	}
 }
 
@@ -232,6 +299,9 @@ Piece.prototype.Calculate_Moves_bishop = function () {
 
 		if (board[this.Index (-i, -i)] == null) {
 			this.Push_rel (-i, -i);
+		} else if (board[this.Index (-i, -i)].col != this.col) {
+			this.Push_rel (-i, -i);
+			break;
 		} else {
 			break;
 		}
@@ -242,6 +312,9 @@ Piece.prototype.Calculate_Moves_bishop = function () {
 	for (var i = 1; i <= min; i++) {
 		if (board[this.Index (i, -i)] == null) {
 			this.Push_rel (i, -i);
+		} else if (board[this.Index (i, -i)].col != this.col) {
+			this.Push_rel (i, -i);
+			break;
 		} else {
 			break;
 		}
@@ -252,6 +325,9 @@ Piece.prototype.Calculate_Moves_bishop = function () {
 	for (var i = 1; i <= min; i++) {
 		if (board[this.Index (-i, i)] == null) {
 			this.Push_rel (-i, i);
+		} else if (board[this.Index (-i, i)].col != this.col) {
+			this.Push_rel (-i, i);
+			break;
 		} else {
 			break;
 		}
@@ -261,6 +337,9 @@ Piece.prototype.Calculate_Moves_bishop = function () {
 	for (var i = 1; i <= min; i++) {
 		if (board[this.Index (i, i)] == null) {
 			this.Push_rel (i, i);
+		} else if (board[this.Index (i, i)].col != this.col) {
+			this.Push_rel (i, i);
+			break;
 		} else {
 			break;
 		}
@@ -278,15 +357,17 @@ Piece.prototype.Calculate_Moves_king = function () {
 		for (var dx = -1; dx <= 1; dx++) {
 			if (!dx && !dy)
 				continue;
-			if (this.Is_Valid_Pos(dx,dy) && board[this.Index (dx, dy)] == null)
-				this.Push_rel (dx, dy);
+
+			if (this.Is_Valid_Pos(dx,dy)) {
+				if (board[this.Index (dx, dy)] == null || board[this.Index (dx, dy)].col != this.col)
+					this.Push_rel (dx, dy);
+			}
 
 		}
 	}
 
 	//implement castlingggg
 }
-
 Piece.prototype.Calculate_Moves = function () {
 	//clears array
 	this.moves.length = 0;
