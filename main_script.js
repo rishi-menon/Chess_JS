@@ -29,9 +29,9 @@ window.onload = function () {
 
 	Initialise_Game  ();
 
-	setTimeout (function() {
-		Manual_Update ();
-	}, 100);
+	// setTimeout (function() {
+	// 	Manual_Update ();
+	// }, 150);
 
 	// Manual_Update ();
 
