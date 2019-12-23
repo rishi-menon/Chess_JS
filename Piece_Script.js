@@ -1,7 +1,5 @@
 //for enpasse
-var pawn_moved = false;
-var king_check = false;
-
+var king_in_check = false;
 function Piece (type, col, x, y) {
 	// master
 	// pawn
@@ -27,7 +25,6 @@ function Piece (type, col, x, y) {
 		this.moves = [];
 
 		board[Index_Abs(x, y)] = this;
-		this.Calculate_Moves ();
 	}
 }
 
@@ -79,7 +76,8 @@ Piece.prototype.Delete_All = function () {
 
 Piece.prototype.Delete = function () {
 	// board[this.x*8 + this.y] = null;
-	this.prev.next = this.next;
+	if (this.prev != null)
+		this.prev.next = this.next;
 	if (this.next != null)
 		this.next.prev = this.prev;
 	board[Index_Abs (this.x, this.y)] = null;
@@ -107,7 +105,7 @@ Piece.prototype.Push_Abs = function (x, y) {
 	this.moves.push ({x:x, y:y});
 }
 //returns if the relative position (x,y) is on the board or not
-Piece.prototype.Is_Valid_Pos = function (x,y) {
+Piece.prototype.Is_Valid_Index = function (x,y) {
 	return (this.x+x < 8) && (this.x+x > -1) && (this.y+y<8) &&(this.y+y>-1);
 }
 
@@ -137,6 +135,22 @@ Piece.prototype.Print_Type = function () {
 		case "king":
 			console.log("king");
 			break;
+	}
+}
+
+Piece.prototype.Can_Check_King = function (block) {
+	// if(this.type == "queen") {
+	// 	console.log((this.moves));
+	// 	console.log (block.x, block.y);
+	// }
+	if (this.Search_Moves (block.x, block.y)) {
+		return true;
+	}
+
+	if (this.next != null) {
+		return this.next.Can_Check_King (block);
+	} else {
+		return false;
 	}
 }
 
@@ -254,38 +268,38 @@ Piece.prototype.Calculate_Moves_rook = function () {
 
 Piece.prototype.Calculate_Moves_horse = function () {
 	//check top
-	if (this.Is_Valid_Pos (1, -2)) {
+	if (this.Is_Valid_Index (1, -2)) {
 		if (board[this.Index (1, -2)] == null || board[this.Index (1, -2)].col != this.col)
 			this.Push_rel (1, -2);
 	}
-	if (this.Is_Valid_Pos (-1, -2)) {
+	if (this.Is_Valid_Index (-1, -2)) {
 		if (board[this.Index (-1, -2)] == null || board[this.Index (-1, -2)].col != this.col)
 			this.Push_rel (-1, -2);
 	}
 	//check down
-	if (this.Is_Valid_Pos (1, 2)) {
+	if (this.Is_Valid_Index (1, 2)) {
 		if (board[this.Index (1, 2)] == null || board[this.Index (1, 2)].col != this.col)
 			this.Push_rel (1, 2);
 	}
-	if (this.Is_Valid_Pos (-1, 2)) {
+	if (this.Is_Valid_Index (-1, 2)) {
 		if (board[this.Index (-1, 2)] == null || board[this.Index (-1, 2)].col != this.col)
 			this.Push_rel (-1, 2);
 	}
 	//chec left
-	if (this.Is_Valid_Pos (-2, 1)) {
+	if (this.Is_Valid_Index (-2, 1)) {
 		if (board[this.Index (-2, 1)] == null || board[this.Index (-2, 1)].col != this.col)
 			this.Push_rel (-2, 1);
 	}
-	if (this.Is_Valid_Pos (-2, -1)) {
+	if (this.Is_Valid_Index (-2, -1)) {
 		if (board[this.Index (-2, -1)] == null || board[this.Index (-2, -1)].col != this.col)
 			this.Push_rel (-2, -1);
 	}
 	//check right
-	if (this.Is_Valid_Pos (2, 1)) {
+	if (this.Is_Valid_Index (2, 1)) {
 		if (board[this.Index (2, 1)] == null || board[this.Index (2, 1)].col != this.col)
 			this.Push_rel (2, 1);
 	}
-	if (this.Is_Valid_Pos (2, -1)) {
+	if (this.Is_Valid_Index (2, -1)) {
 		if (board[this.Index (2, -1)] == null || board[this.Index (2, -1)].col != this.col)
 			this.Push_rel (2, -1);
 	}
@@ -358,7 +372,7 @@ Piece.prototype.Calculate_Moves_king = function () {
 			if (!dx && !dy)
 				continue;
 
-			if (this.Is_Valid_Pos(dx,dy)) {
+			if (this.Is_Valid_Index(dx,dy)) {
 				if (board[this.Index (dx, dy)] == null || board[this.Index (dx, dy)].col != this.col)
 					this.Push_rel (dx, dy);
 			}
@@ -370,6 +384,97 @@ Piece.prototype.Calculate_Moves_king = function () {
 }
 Piece.prototype.Calculate_Moves = function () {
 	//clears array
+	this.Calculate_Moves_Without_Discover_Check ();
+	var new_moves = [];
+	var new_move_length_jimbo = 0;
+
+	// if (this.type == "horse") {
+	// 	console.log("initial");
+	// 	console.log(this.moves);
+	// }
+
+	for (var i = 0; i < this.moves.length; i++) {
+
+		if (!this.Check_Discover_Check (this.moves[i])) {
+			if (this.type == "horse") {
+				console.log("Inside: ");
+				console.log(this.moves[i]);
+			}
+			new_moves[new_move_length_jimbo] = (this.moves[i]);
+			new_move_length_jimbo += 1;
+
+		} else {
+			console.log("Works");
+		}
+	}
+
+	// if (this.type == "horse") {
+	// 	console.log("final");
+	// 	console.log(new_moves[0]);
+	// 	console.log(new_moves[1]);
+	// }
+	//
+	//copy to moves array
+	this.moves.length = 0;
+	for (var j = 0; j < new_move_length_jimbo; j++) {
+		this.moves.push (new_moves[j]);
+	}
+
+	new_moves.length = 0;
+	new_move_length_jimbo = 0;
+}
+
+Piece.prototype.Calculate_Moves_Without_Discover_Check = function () {
 	this.moves.length = 0;
 	eval ("this.Calculate_Moves_" + this.type + "()");
+}
+
+Piece.prototype.Calculate_Moves_All_Without_Discover_Check = function () {
+	this.Calculate_Moves_Without_Discover_Check ();
+
+	if (this.next != null) {
+		this.next.Calculate_Moves_All_Without_Discover_Check ();
+	}
+}
+
+Piece.prototype.Calculate_Moves_All = function () {
+	this.Calculate_Moves ();
+
+	if (this.next != null) {
+		this.next.Calculate_Moves_All ();
+	}
+}
+
+Piece.prototype.Check_Discover_Check = function (coord) {
+	var temp_final = board[Index_Abs(coord.x, coord.y)];
+	var temp_x = this.x;
+	var temp_y = this.y;
+
+	board[Index_Abs(temp_x, temp_y)] = null;
+	board[Index_Abs(coord.x, coord.y)] = this;
+
+	this.x = coord.x;
+	this.y = coord.y;
+
+	if (this.col == "white") {
+	//while checking discover check for white, we only need to check possible moves of black
+		black_master.next.Calculate_Moves_All_Without_Discover_Check ();
+	} else {
+		white_master.next.Calculate_Moves_All_Without_Discover_Check ();
+	}
+
+	var discovered_chk = Is_King_In_Check (this.col);
+	board[Index_Abs(coord.x, coord.y)] = temp_final;
+	board[Index_Abs(temp_x, temp_y)] = this;
+
+	this.x = temp_x;
+	this.y = temp_y;
+
+	if (this.col == "white") {
+		black_master.next.Calculate_Moves_All_Without_Discover_Check ();
+	} else {
+		white_master.next.Calculate_Moves_All_Without_Discover_Check ();
+	}
+
+	return discovered_chk;
 }

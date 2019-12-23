@@ -20,7 +20,7 @@ var cur_block = null;
 var cur_turn = "white";
 
 window.onload = function () {
-	
+
 	// fps = 20;
 	//setInterval (Fixed_Update, 1000/fps);
 	black_master = new Piece ("master", "black", -1, -1);
@@ -41,19 +41,32 @@ window.onload = function () {
 		// - check if empty
 		// - if not check if its in moves_available
 		// - else change block
+		var block_moved = false;
 
 		if (cur_block == null) {
 			Change_Cur_Block ();
 		} else if (cur_block.Search_Moves (mouse_x, mouse_y)) {
 			cur_block.Move_Block (mouse_x, mouse_y);
-			cur_block = null;
-			Switch_Turn ();
+			king_in_check = false;
+			block_moved = true;
+
 		} else {
 			Change_Cur_Block ();
 		}
-		console.log(cur_block);
-		if (cur_block != null) {
 
+		if (block_moved == true) {
+			white_master.next.Calculate_Moves_All ();
+			black_master.next.Calculate_Moves_All ();
+			//check if any piece can give a check to the king or not
+
+			cur_turn = Get_Opposite_Col (cur_turn);
+			if (Is_King_In_Check (cur_turn)) {
+				king_in_check = true;
+			}
+			cur_block = null;
+		}
+
+		if (cur_block != null) {
 			cur_block.Calculate_Moves ();
 		}
 
@@ -106,29 +119,47 @@ function Initialise_Game () {
 	for (var i = 0; i < 8; i++) {
 		white_master.Add_Block ("pawn", "white", i, 6);
 	}
+
+	white_master.next.Calculate_Moves_All ();
+	black_master.next.Calculate_Moves_All ();
 }
 
 function Manual_Update () {
 
 	ctx.clearRect (0, 0, width, width);
-
 	//draw board
 	Draw_Board ();
 
 	//draw block
-	// for (var i = 0; i < 8; i++) {
-	// 	for (var j = 0; j < 8; j++) {
-	// 		if (board[i*8 +j] != null) {
-	// 			Draw_Rect (j*size, i*size, size, size, "rgba(0,0,255,0.5)");
-	// 		}
-	// 	}
-	// }
+	for (var i = 0; i < 8; i++) {
+		for (var j = 0; j < 8; j++) {
+			if (board[i*8 +j] != null) {
+				Draw_Rect (j*size, i*size, size, size, "rgba(0,0,255,0.5)");
+			}
+		}
+	}
 
 	if (cur_block != null) {
 		//draw possible moves
+
 		Draw_Possible_Moves (cur_block);
 	}
+	if (king_in_check == true) {
+		console.log("Check");
+		var x_pos;
+		var y_pos;
+		if (cur_turn == "white") {
+			x_pos = white_master.next.x;
+			y_pos = white_master.next.y;
+		} else {
+			x_pos = black_master.next.x;
+			y_pos = black_master.next.y;
+		}
 
+		Draw_Rect (x_pos*size, y_pos*size, size, size, hexa (possible_moves_outline_col, 1));
+
+		Draw_Rect (x_pos*size + delta_size, y_pos*size + delta_size, draw_size, draw_size, hexa (possible_moves_col, 1));
+	}
 	black_master.next.Draw ();
 	white_master.next.Draw ();
 

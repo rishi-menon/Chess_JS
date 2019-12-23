@@ -5,11 +5,13 @@ const canvas = document.getElementById ("myCanvas");
 const ctx = canvas.getContext ("2d");
 const width = canvas.width;
 const size = width/8;
-const draw_size = 0.9*size;
+const draw_size = 0.95*size;
 const delta_size = (size-draw_size)/2;
 
-const black_col = "0xd48c4c";
-const white_col = "0xfccca4";
+const black_col = 0xd48c4c;
+const white_col = 0xfccca4;
+const possible_moves_col = 0xdc6464;
+const possible_moves_outline_col = 0x222222;
 
 function Calculate_Mouse_Pos (evt) {
 	var rect = canvas.getBoundingClientRect ();
@@ -58,7 +60,9 @@ function Draw_Board () {
 
 function Draw_Possible_Moves (block) {
 	for (var i = 0; i < block.moves.length; i++) {
-		Draw_Rect (block.moves[i].x*size + delta_size, block.moves[i].y*size + delta_size, draw_size, draw_size, "rgba(220,100,100,1)");
+		Draw_Rect (block.moves[i].x*size, block.moves[i].y*size, size, size, hexa (possible_moves_outline_col, 1));
+
+		Draw_Rect (block.moves[i].x*size + delta_size, block.moves[i].y*size + delta_size, draw_size, draw_size, hexa (possible_moves_col, 1));
 	}
 }
 
@@ -70,10 +74,19 @@ function Change_Cur_Block () {
 	}
 }
 
-function Switch_Turn () {
-	if (cur_turn == "white") {
-		cur_turn = "black";
+function Get_Opposite_Col (col) {
+	if (col == "white") {
+		return "black";
 	} else {
-		cur_turn = "white";
+		return "white";
+	}
+}
+
+function Is_King_In_Check (king_col) {
+	if (king_col == "black") {
+		return white_master.next.Can_Check_King (black_master.next)
+
+	} else {
+		return black_master.next.Can_Check_King (white_master.next)
 	}
 }
