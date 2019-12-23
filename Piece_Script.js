@@ -25,6 +25,10 @@ function Piece (type, col, x, y) {
 		this.moves = [];
 
 		board[Index_Abs(x, y)] = this;
+
+		this.img.onload = function () {
+			Manual_Update ();
+		}
 	}
 }
 
@@ -83,7 +87,19 @@ Piece.prototype.Delete = function () {
 	board[Index_Abs (this.x, this.y)] = null;
 	delete this.img;
 }
-
+Piece.prototype.Virtual_Delete = function () {
+	if (this.prev != null)
+		this.prev.next = this.next;
+	if (this.next != null)
+		this.next.prev = this.prev;
+	board[Index_Abs (this.x, this.y)] = null;
+}
+Piece.prototype.Virtual_Reconnect = function () {
+	if (this.prev != null)
+		this.prev.next = this;
+	if (this.next != null)
+		this.next.prev = this;
+}
 Piece.prototype.Draw = function () {
 	//draw all
 	ctx.drawImage (this.img, this.x*size, this.y*size, size, size);
@@ -388,18 +404,9 @@ Piece.prototype.Calculate_Moves = function () {
 	var new_moves = [];
 	var new_move_length_jimbo = 0;
 
-	// if (this.type == "horse") {
-	// 	console.log("initial");
-	// 	console.log(this.moves);
-	// }
-
 	for (var i = 0; i < this.moves.length; i++) {
 
 		if (!this.Check_Discover_Check (this.moves[i])) {
-			if (this.type == "horse") {
-				console.log("Inside: ");
-				console.log(this.moves[i]);
-			}
 			new_moves[new_move_length_jimbo] = (this.moves[i]);
 			new_move_length_jimbo += 1;
 
@@ -408,12 +415,6 @@ Piece.prototype.Calculate_Moves = function () {
 		}
 	}
 
-	// if (this.type == "horse") {
-	// 	console.log("final");
-	// 	console.log(new_moves[0]);
-	// 	console.log(new_moves[1]);
-	// }
-	//
 	//copy to moves array
 	this.moves.length = 0;
 	for (var j = 0; j < new_move_length_jimbo; j++) {
@@ -450,6 +451,10 @@ Piece.prototype.Check_Discover_Check = function (coord) {
 	var temp_x = this.x;
 	var temp_y = this.y;
 
+	if (temp_final != null) {
+		temp_final.Virtual_Delete ();
+	}
+	//virtual move
 	board[Index_Abs(temp_x, temp_y)] = null;
 	board[Index_Abs(coord.x, coord.y)] = this;
 
@@ -464,11 +469,17 @@ Piece.prototype.Check_Discover_Check = function (coord) {
 	}
 
 	var discovered_chk = Is_King_In_Check (this.col);
+
+	//undo the virtual move
 	board[Index_Abs(coord.x, coord.y)] = temp_final;
 	board[Index_Abs(temp_x, temp_y)] = this;
 
 	this.x = temp_x;
 	this.y = temp_y;
+
+	if (temp_final != null) {
+		temp_final.Virtual_Reconnect ();
+	}
 
 	if (this.col == "white") {
 		black_master.next.Calculate_Moves_All_Without_Discover_Check ();
