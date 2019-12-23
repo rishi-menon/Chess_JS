@@ -87,7 +87,7 @@ Piece.prototype.Delete = function () {
 	board[Index_Abs (this.x, this.y)] = null;
 	delete this.img;
 }
-Piece.prototype.Virtual_Delete = function () {
+Piece.prototype.Virtual_Disconnect = function () {
 	if (this.prev != null)
 		this.prev.next = this.next;
 	if (this.next != null)
@@ -99,6 +99,69 @@ Piece.prototype.Virtual_Reconnect = function () {
 		this.prev.next = this;
 	if (this.next != null)
 		this.next.prev = this;
+}
+Piece.prototype.Virtual_Move = function (x, y) {
+	//name is misleading.... it changes this.x to x but stores original pposition in virtual pos array
+	if (this.virtual_pos_len == undefined) {
+		//first virtual move
+		// console.log("Created");
+		this.virtual_pos = [];
+		this.virtual_pos_len = 0;
+		this.virtual_board = [];
+		this.virtual_board_len = 0;
+	}
+	//store temporary location before virtual mvoe
+	this.virtual_pos[this.virtual_pos_len] = {x: this.x, y: this.y};
+	this.virtual_pos_len += 1;
+	this.virtual_board[this.virtual_board_len] = board[Index_Abs (x, y)];
+
+	if (board[Index_Abs (x, y)] != null) {
+		//virtually disconnect it
+		board[Index_Abs (x, y)].Virtual_Disconnect ();
+	}
+	this.virtual_board_len += 1;
+
+	//virtual move
+	board[Index_Abs (this.x, this.y)] = null;
+	this.x = x;
+	this.y = y;
+	board[Index_Abs (x, y)] = this;
+
+}
+
+Piece.prototype.Virtual_Undo_Move = function () {
+	if (this.virtual_pos_len == undefined) {
+		//piece never virtually moved
+		// console.log("dne...");
+		return;
+	} else {
+
+		//-= must come before cause when len is 1 we need index 0
+		this.virtual_board_len -= 1;
+		board[Index_Abs (this.x, this.y)] = this.virtual_board[this.virtual_board_len];
+
+		if (board[Index_Abs (this.x, this.y)] != null) {
+			board[Index_Abs (this.x, this.y)].Virtual_Reconnect ();
+		}
+
+
+		//-= must come before cause when len is 1 we need index 0
+		this.virtual_pos_len -= 1;
+		this.x = this.virtual_pos[this.virtual_pos_len].x;
+		this.y = this.virtual_pos[this.virtual_pos_len].y;
+
+		board[Index_Abs (this.x, this.y)] = this;
+
+		if (this.virtual_pos_len == 0) {
+			//all virtual moves are over.... delete virtual variables
+			// console.log("deleted");
+			delete this.virtual_pos_len;
+			delete this.virtual_pos;
+			delete this.virtual_board_len;
+			delete this.virtual_board;
+		}
+	}
+
 }
 Piece.prototype.Draw = function () {
 	//draw all
@@ -125,40 +188,36 @@ Piece.prototype.Is_Valid_Index = function (x,y) {
 	return (this.x+x < 8) && (this.x+x > -1) && (this.y+y<8) &&(this.y+y>-1);
 }
 
-//for debugging
-Piece.prototype.Print = function () {
-		console.log(this);
-}
-
-//for debugging
-Piece.prototype.Print_Type = function () {
-	switch (this.type) {
-		case "pawn":
-			console.log("pawn");
-			break;
-		case "rook":
-			console.log("rook");
-			break;
-		case "horse":
-			console.log("horse");
-			break;
-		case "bishop":
-			console.log("bishop");
-			break;
-		case "queen":
-			console.log("queen");
-			break;
-		case "king":
-			console.log("king");
-			break;
-	}
-}
+// //for debugging
+// Piece.prototype.Print = function () {
+// 		console.log(this);
+// }
+//
+// //for debugging
+// Piece.prototype.Print_Type = function () {
+// 	switch (this.type) {
+// 		case "pawn":
+// 			console.log("pawn");
+// 			break;
+// 		case "rook":
+// 			console.log("rook");
+// 			break;
+// 		case "horse":
+// 			console.log("horse");
+// 			break;
+// 		case "bishop":
+// 			console.log("bishop");
+// 			break;
+// 		case "queen":
+// 			console.log("queen");
+// 			break;
+// 		case "king":
+// 			console.log("king");
+// 			break;
+// 	}
+// }
 
 Piece.prototype.Can_Check_King = function (block) {
-	// if(this.type == "queen") {
-	// 	console.log((this.moves));
-	// 	console.log (block.x, block.y);
-	// }
 	if (this.Search_Moves (block.x, block.y)) {
 		return true;
 	}
@@ -410,8 +469,6 @@ Piece.prototype.Calculate_Moves = function () {
 			new_moves[new_move_length_jimbo] = (this.moves[i]);
 			new_move_length_jimbo += 1;
 
-		} else {
-			console.log("Works");
 		}
 	}
 
@@ -447,20 +504,8 @@ Piece.prototype.Calculate_Moves_All = function () {
 }
 
 Piece.prototype.Check_Discover_Check = function (coord) {
-	var temp_final = board[Index_Abs(coord.x, coord.y)];
-	var temp_x = this.x;
-	var temp_y = this.y;
 
-	if (temp_final != null) {
-		temp_final.Virtual_Delete ();
-	}
-	//virtual move
-	board[Index_Abs(temp_x, temp_y)] = null;
-	board[Index_Abs(coord.x, coord.y)] = this;
-
-	this.x = coord.x;
-	this.y = coord.y;
-
+	this.Virtual_Move (coord.x, coord.y);
 	if (this.col == "white") {
 	//while checking discover check for white, we only need to check possible moves of black
 		black_master.next.Calculate_Moves_All_Without_Discover_Check ();
@@ -469,23 +514,12 @@ Piece.prototype.Check_Discover_Check = function (coord) {
 	}
 
 	var discovered_chk = Is_King_In_Check (this.col);
-
-	//undo the virtual move
-	board[Index_Abs(coord.x, coord.y)] = temp_final;
-	board[Index_Abs(temp_x, temp_y)] = this;
-
-	this.x = temp_x;
-	this.y = temp_y;
-
-	if (temp_final != null) {
-		temp_final.Virtual_Reconnect ();
-	}
+	this.Virtual_Undo_Move ();
 
 	if (this.col == "white") {
 		black_master.next.Calculate_Moves_All_Without_Discover_Check ();
 	} else {
 		white_master.next.Calculate_Moves_All_Without_Discover_Check ();
 	}
-
 	return discovered_chk;
 }

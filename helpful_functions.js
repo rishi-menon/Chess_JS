@@ -11,7 +11,8 @@ const delta_size = (size-draw_size)/2;
 const black_col = 0xd48c4c;
 const white_col = 0xfccca4;
 const possible_moves_col = 0xdc6464;
-const possible_moves_outline_col = 0x222222;
+const outline_col = 0x222222;
+const selected_block_col = 0x8b0000;
 
 function Calculate_Mouse_Pos (evt) {
 	var rect = canvas.getBoundingClientRect ();
@@ -59,8 +60,12 @@ function Draw_Board () {
 }
 
 function Draw_Possible_Moves (block) {
+	Draw_Rect (block.x*size, block.y*size, size, size, hexa (outline_col, 1));
+
+	Draw_Rect (block.x*size + delta_size, block.y*size + delta_size, draw_size, draw_size, hexa (selected_block_col, 1));
+
 	for (var i = 0; i < block.moves.length; i++) {
-		Draw_Rect (block.moves[i].x*size, block.moves[i].y*size, size, size, hexa (possible_moves_outline_col, 1));
+		Draw_Rect (block.moves[i].x*size, block.moves[i].y*size, size, size, hexa (outline_col, 1));
 
 		Draw_Rect (block.moves[i].x*size + delta_size, block.moves[i].y*size + delta_size, draw_size, draw_size, hexa (possible_moves_col, 1));
 	}
