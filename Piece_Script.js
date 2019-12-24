@@ -1,5 +1,6 @@
 //for enpasse
 var king_in_check = false;
+var king_stalemate = false;
 function Piece (type, col, x, y) {
 	// master
 	// pawn
@@ -41,6 +42,28 @@ Piece.prototype.Add_Block = function (type, col, x, y) {
 	}
 }
 
+Piece.prototype.Is_Stalemate = function () {
+	if (this.moves.length != 0) {
+		return false;
+	}
+	if (this.next != null) {
+		return this.next.Is_Stalemate ();
+	} else {
+		return true;
+	}
+}
+
+Piece.prototype.Get_Rook = function () {
+	if (this.type == "rook") {
+		return this;
+	}
+	if (this.next != null) {
+		return this.next.Get_Rook ();
+	} else {
+		return null;
+	}
+}
+
 Piece.prototype.Search_Moves = function (x, y) {
 	//linear search
 	var len = this.moves.length;
@@ -49,7 +72,6 @@ Piece.prototype.Search_Moves = function (x, y) {
 			return true;
 		}
 	}
-
 	return false;
 }
 
@@ -59,13 +81,53 @@ Piece.prototype.Move_Block = function (x, y) {
 	board[Index_Abs (this.x, this.y)] = null;
 	//capture enemy block if necessary
 	if (board[Index_Abs (x, y)] != null) {
-		//the block has to be opposite block as moves[] cannot have the block of same col
+		//the block has to be opposite col as moves[] cannot have the block of same col
 		board[Index_Abs (x, y)].Delete ();
 	}
 	board[Index_Abs (x, y)] = this;
+
+	//check if casteling
+	if (this.type == "king") {
+		var dx = this.x - x;
+		console.log(dx);
+		if (dx > 1) {
+			//left castle
+			var rook;
+			//get rook
+			if (this.col == "white") {
+				rook = white_master.next.Get_Rook ();
+				if (rook.x != 0)
+					rook = rook.next.Get_Rook ();
+			} else {
+				rook = black_master.next.Get_Rook ();
+				if (rook.x != 0)
+					rook = rook.next.Get_Rook ();
+			}
+
+			//move rook
+			rook.Move_Block (x+1, y);
+		} else if (dx < -1) {
+			//right castle
+			var rook;
+			//get rook
+			if (this.col == "white") {
+				rook = white_master.next.Get_Rook ();
+				if (rook.x == 0)
+					rook = rook.next.Get_Rook ();
+			} else {
+				rook = black_master.next.Get_Rook ();
+				if (rook.x == 0)
+					rook = rook.next.Get_Rook ();
+			}
+			//move rook
+			rook.Move_Block (x-1, y);
+		}
+	}
+	
 	this.x = x;
 	this.y = y;
 	this.has_moved = true;
+
 	this.Calculate_Moves ();
 }
 
@@ -455,7 +517,71 @@ Piece.prototype.Calculate_Moves_king = function () {
 		}
 	}
 
-	//implement castlingggg
+	if (this.has_moved) {
+		//do not check for casteling
+		return;
+	}
+
+	//get rook variables
+	var rook1 = null;
+	var rook2 = null;
+	if (this.col == "white") {
+		if (white_master.next != null) {
+			rook1 = white_master.next.Get_Rook ();
+		}
+	} else {
+		if (black_master.next != null) {
+			rook1 = black_master.next.Get_Rook ();
+		}
+	}
+
+	if (rook1 != null && rook1.next != null) {
+		rook2 = rook1.next.Get_Rook ();
+	}
+
+	//implement casteling
+	if (rook1 != null) {
+			if (!rook1.has_moved) {
+				if (rook1.x == 0) {
+					//left rook
+					if (board[this.Index (-1,0)] == null && board[this.Index (-2,0)] == null && board[this.Index  (-3,0)] == null) {
+						console.log("castle");
+						this.Push_rel (-2, 0);
+					}
+
+				} else {
+					//right rook
+					if (board[this.Index (1,0)] == null && board[this.Index (2,0)] == null) {
+						console.log("castle");
+						this.Push_rel (2, 0);
+					}
+				}
+			}
+	}
+
+	//do it for the other rook
+	if (rook2 != null) {
+			if (!rook2.has_moved) {
+				if (rook2.x == 0) {
+					//left rook
+					if (board[this.Index (-1,0)] == null && board[this.Index (-2,0)] == null && board[this.Index  (-3,0)] == null) {
+						console.log("castle");
+						this.Push_rel (-2, 0);
+					}
+
+				} else {
+					//right rook
+					if (board[this.Index (1,0)] == null && board[this.Index (2,0)] == null) {
+						console.log("castle");
+						this.Push_rel (2, 0);
+					}
+				}
+			}
+	}
+
+	rook1 = null;
+	rook2 = null;
+
 }
 Piece.prototype.Calculate_Moves = function () {
 	//clears array
@@ -508,18 +634,22 @@ Piece.prototype.Check_Discover_Check = function (coord) {
 	this.Virtual_Move (coord.x, coord.y);
 	if (this.col == "white") {
 	//while checking discover check for white, we only need to check possible moves of black
-		black_master.next.Calculate_Moves_All_Without_Discover_Check ();
+		if (black_master.next != null)
+			black_master.next.Calculate_Moves_All_Without_Discover_Check ();
 	} else {
-		white_master.next.Calculate_Moves_All_Without_Discover_Check ();
+		if (white_master.next != null)
+			white_master.next.Calculate_Moves_All_Without_Discover_Check ();
 	}
 
 	var discovered_chk = Is_King_In_Check (this.col);
 	this.Virtual_Undo_Move ();
 
 	if (this.col == "white") {
-		black_master.next.Calculate_Moves_All_Without_Discover_Check ();
+		if (black_master.next != null)
+			black_master.next.Calculate_Moves_All_Without_Discover_Check ();
 	} else {
-		white_master.next.Calculate_Moves_All_Without_Discover_Check ();
+		if (white_master.next != null)
+			white_master.next.Calculate_Moves_All_Without_Discover_Check ();
 	}
 	return discovered_chk;
 }
