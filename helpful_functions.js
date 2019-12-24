@@ -12,7 +12,27 @@ const black_col = 0xd48c4c;
 const white_col = 0xfccca4;
 const possible_moves_col = 0xdc6464;
 const outline_col = 0x222222;
-const selected_block_col = 0x8b0000;
+const selected_block_col = 0x008b00;
+const king_check_col = 0x0055aa;
+
+//animation variables
+const a_screen_initial = 0;
+const a_screen_final = 0.9;
+const a_screen_col = 0x222222;
+
+const a_go_initial = 0;
+const a_go_final = 1;
+const a_go_col = 0x40a0ff;
+const a_go_restart_col = 0x40a0ff;
+
+const go_x = width*0.4;
+const go_y = width*0.2;
+
+const a_time = 1;	//in seconds
+var a_percent = 0;
+
+const delta_time = 1/40;
+
 
 function Calculate_Mouse_Pos (evt) {
 	var rect = canvas.getBoundingClientRect ();
@@ -89,9 +109,51 @@ function Get_Opposite_Col (col) {
 
 function Is_King_In_Check (king_col) {
 	if (king_col == "black") {
-		return white_master.next.Can_Check_King (black_master.next)
+		if (white_master.next != null)
+			return white_master.next.Can_Check_King (black_king);
+		else
+			return false;
 
 	} else {
-		return black_master.next.Can_Check_King (white_master.next)
+		if (black_master.next != null)
+			return black_master.next.Can_Check_King (white_king);
+		else
+			return false;
+	}
+}
+
+function Lerp (a, b, val) {
+	return a + (b-a)*val;
+}
+
+function Animate_Screen () {
+	// cur_block = null;
+	Manual_Update ();
+	a_percent += delta_time/a_time;
+	if (a_percent > 1) {
+		a_percent = 1;
+	}
+
+	var a_screen_alpha = Lerp (a_screen_initial, a_screen_final, a_percent);
+	var a_go_alpha = Lerp (a_go_initial, a_go_final, a_percent);
+
+	Draw_Rect (0, 0, width, width, hexa (a_screen_col, a_screen_alpha));
+
+	ctx.font = "30px Arial";
+    ctx.fillStyle = hexa (a_go_col, a_go_alpha);
+	if (king_in_check) {
+		//checkmate
+    	ctx.fillText("Checkmate", go_x, go_y);
+	} else {
+		//stalemate
+		ctx.fillText("Stalemate", go_x, go_y);
+	}
+	ctx.font = "30px Arial";
+	ctx.fillStyle = hexa (a_go_restart_col, a_go_alpha);
+	ctx.fillText("Press space to play again", 0.3*width, go_y + 100);
+
+	if (a_percent == 1) {
+		clearInterval (a_interval);
+		a_interval = 0;
 	}
 }
