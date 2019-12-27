@@ -1,6 +1,10 @@
 //for enpasse
 var king_in_check = false;
 var king_stalemate = false;
+
+var pawn_promote_bool = false;
+var pawn_promote = null;
+
 function Piece (type, col, x, y) {
 	// master
 	// pawn
@@ -89,7 +93,6 @@ Piece.prototype.Move_Block = function (x, y) {
 	//check if casteling
 	if (this.type == "king") {
 		var dx = this.x - x;
-		console.log(dx);
 		if (dx > 1) {
 			//left castle
 			var rook;
@@ -123,11 +126,19 @@ Piece.prototype.Move_Block = function (x, y) {
 			rook.Move_Block (x-1, y);
 		}
 	}
-	
+
 	this.x = x;
 	this.y = y;
 	this.has_moved = true;
 
+	//pawn promotion
+	if (this.type == "pawn") {
+		if (this.y == 0 || this.y == 7) {
+			//promote pawn
+			pawn_promote_bool = true;
+			pawn_promote = this;
+		}
+	}
 	this.Calculate_Moves ();
 }
 
@@ -164,24 +175,27 @@ Piece.prototype.Virtual_Reconnect = function () {
 }
 Piece.prototype.Virtual_Move = function (x, y) {
 	//name is misleading.... it changes this.x to x but stores original pposition in virtual pos array
-	if (this.virtual_pos_len == undefined) {
+	if (this.virtual_old_pos_len == undefined) {
 		//first virtual move
 		// console.log("Created");
-		this.virtual_pos = [];
-		this.virtual_pos_len = 0;
-		this.virtual_board = [];
-		this.virtual_board_len = 0;
+		this.virtual_old_pos = [];
+		this.virtual_old_pos_len = 0;
+
+		this.virtual_new_piece = [];
+		this.virtual_new_piece_len = 0;
 	}
+
 	//store temporary location before virtual mvoe
-	this.virtual_pos[this.virtual_pos_len] = {x: this.x, y: this.y};
-	this.virtual_pos_len += 1;
-	this.virtual_board[this.virtual_board_len] = board[Index_Abs (x, y)];
+	this.virtual_old_pos[this.virtual_old_pos_len] = {x: this.x, y: this.y};
+	this.virtual_old_pos_len += 1;
+
+	this.virtual_new_piece[this.virtual_new_piece_len] = board[Index_Abs (x, y)];
 
 	if (board[Index_Abs (x, y)] != null) {
 		//virtually disconnect it
 		board[Index_Abs (x, y)].Virtual_Disconnect ();
 	}
-	this.virtual_board_len += 1;
+	this.virtual_new_piece_len += 1;
 
 	//virtual move
 	board[Index_Abs (this.x, this.y)] = null;
@@ -192,15 +206,15 @@ Piece.prototype.Virtual_Move = function (x, y) {
 }
 
 Piece.prototype.Virtual_Undo_Move = function () {
-	if (this.virtual_pos_len == undefined) {
+	if (this.virtual_old_pos_len == undefined) {
 		//piece never virtually moved
 		// console.log("dne...");
 		return;
 	} else {
 
 		//-= must come before cause when len is 1 we need index 0
-		this.virtual_board_len -= 1;
-		board[Index_Abs (this.x, this.y)] = this.virtual_board[this.virtual_board_len];
+		this.virtual_new_piece_len -= 1;
+		board[Index_Abs (this.x, this.y)] = this.virtual_new_piece[this.virtual_new_piece_len];
 
 		if (board[Index_Abs (this.x, this.y)] != null) {
 			board[Index_Abs (this.x, this.y)].Virtual_Reconnect ();
@@ -208,19 +222,19 @@ Piece.prototype.Virtual_Undo_Move = function () {
 
 
 		//-= must come before cause when len is 1 we need index 0
-		this.virtual_pos_len -= 1;
-		this.x = this.virtual_pos[this.virtual_pos_len].x;
-		this.y = this.virtual_pos[this.virtual_pos_len].y;
+		this.virtual_old_pos_len -= 1;
+		this.x = this.virtual_old_pos[this.virtual_old_pos_len].x;
+		this.y = this.virtual_old_pos[this.virtual_old_pos_len].y;
 
 		board[Index_Abs (this.x, this.y)] = this;
 
-		if (this.virtual_pos_len == 0) {
+		if (this.virtual_old_pos_len == 0) {
 			//all virtual moves are over.... delete virtual variables
 			// console.log("deleted");
-			delete this.virtual_pos_len;
-			delete this.virtual_pos;
-			delete this.virtual_board_len;
-			delete this.virtual_board;
+			delete this.virtual_old_pos_len;
+			delete this.virtual_old_pos;
+			delete this.virtual_new_piece_len;
+			delete this.virtual_new_piece;
 		}
 	}
 

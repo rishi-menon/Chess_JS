@@ -30,48 +30,82 @@ window.onload = function () {
 		// - check if empty
 		// - if not check if its in moves_available
 		// - else change block
+
 			if (!king_stalemate) {
 
-				if (cur_block == null) {
-					Change_Cur_Block ();
+				//check for pawn promotion
+					if (pawn_promote_bool) {
+						
+						var promotion_type = Set_Promotion_Type ();
 
-				} else if (cur_block.Search_Moves (mouse_x, mouse_y)) {
-					cur_block.Move_Block (mouse_x, mouse_y);
-					king_in_check = false;
+						if (promotion_type != null) {
+							pawn_promote.type = promotion_type;
+							pawn_promote.img.src = "Pieces/" + promotion_type + "_" + pawn_promote.col + ".png";
+							
+							pawn_promote.Calculate_Moves ();
+							reset_pawn_promotion ();
+							
+							//do not change turn as it has already been changed
 
-					white_master.next.Calculate_Moves_All ();
-					black_master.next.Calculate_Moves_All ();
-					//check if any piece can give a check to the king or not
+							if (Is_King_In_Check (cur_turn)) {
+								king_in_check = true;
+							}
 
-					cur_turn = Get_Opposite_Col (cur_turn);
-					if (Is_King_In_Check (cur_turn)) {
-						king_in_check = true;
-					}
-
-					if (cur_turn == "white") {
-						king_stalemate = white_master.next.Is_Stalemate ();
-					} else {
-						king_stalemate = black_master.next.Is_Stalemate ();
-					}
-
-					cur_block = null;
+							if (cur_turn == "white") {
+								king_stalemate = white_master.next.Is_Stalemate ();
+							} else {
+								king_stalemate = black_master.next.Is_Stalemate ();
+							}
+						
+						}
 
 				} else {
+					if (cur_block == null) {
 					Change_Cur_Block ();
+					
+
+					} else if (cur_block.Search_Moves (mouse_x, mouse_y)) {
+						cur_block.Move_Block (mouse_x, mouse_y);
+						king_in_check = false;
+
+						white_master.next.Calculate_Moves_All ();
+						black_master.next.Calculate_Moves_All ();
+						//check if any piece can give a check to the king or not
+
+						cur_turn = Get_Opposite_Col (cur_turn);
+						if (Is_King_In_Check (cur_turn)) {
+							king_in_check = true;
+						}
+
+						if (cur_turn == "white") {
+							king_stalemate = white_master.next.Is_Stalemate ();
+						} else {
+							king_stalemate = black_master.next.Is_Stalemate ();
+						}
+
+						cur_block = null;
+
+					} else {
+						Change_Cur_Block ();
+						
+					}
+
+					if (cur_block != null) {
+						cur_block.Calculate_Moves ();
+					}
 				}
 
-				// if (cur_block != null) {
-				// 	cur_block.Calculate_Moves ();
-				// }
-
 				if (king_stalemate) {
-						if (a_interval == 0) {
-							a_interval = setInterval (Animate_Screen, delta_time*1000);
-						}
+					if (a_interval == 0) {
+						a_interval = setInterval (Animate_Screen, delta_time*1000);
+					}
 				}
 
 				Manual_Update ();
+
+				console.log (king_in_check);
 		}
+		
 	});
 
 	document.addEventListener ("keydown", function(evt) {
@@ -91,6 +125,8 @@ function Initialise_Game () {
 
 	king_in_check = false;
 	king_stalemate = false;
+
+	reset_pawn_promotion ();
 
 	black_king = null;
 	white_king = null;
@@ -163,18 +199,18 @@ function Manual_Update () {
 	Draw_Board ();
 
 	//draw block
-	// for (var i = 0; i < 8; i++) {
-	// 	for (var j = 0; j < 8; j++) {
-	// 		if (board[i*8 +j] != null) {
-	// 			Draw_Rect (j*size, i*size, size, size, "rgba(0,0,255,0.5)");
-	// 		}
-	// 	}
-	// }
-
+	for (var i = 0; i < 8; i++) {
+		for (var j = 0; j < 8; j++) {
+			if (board[i*8 +j] != null) {
+				Draw_Rect (j*size, i*size, size, size, "rgba(0,0,255,0.5)");
+			}
+		}
+	}
 	if (cur_block != null) {
 		//draw possible moves
 		Draw_Possible_Moves (cur_block);
 	}
+
 
 	if (king_in_check) {
 		var x_pos;
@@ -193,9 +229,26 @@ function Manual_Update () {
 		Draw_Rect (x_pos*size + delta_size, y_pos*size + delta_size, draw_size, draw_size, hexa (king_check_col, 1));
 	}
 
-	if (black_master.next != null)
-		black_master.next.Draw ();
-	if (white_master.next != null)
-		white_master.next.Draw ();
+
+	if (pawn_promote_bool) {
+			var draw_img = new Image;
+			draw_img.src = "Pieces/" + "rook" + "_" + pawn_promote.col + ".png";
+			ctx.drawImage (draw_img, 3*size, 3*size, size, size);
+
+			draw_img.src = "Pieces/" + "horse" + "_" + pawn_promote.col + ".png";
+			ctx.drawImage (draw_img, 3*size, 4*size, size, size);
+
+			draw_img.src = "Pieces/" + "bishop" + "_" + pawn_promote.col + ".png";
+			ctx.drawImage (draw_img, 4*size, 3*size, size, size);
+
+			draw_img.src = "Pieces/" + "queen" + "_" + pawn_promote.col + ".png";
+			ctx.drawImage (draw_img, 4*size, 4*size, size, size);
+
+	} else {
+		if (black_master.next != null)
+			black_master.next.Draw ();
+		if (white_master.next != null)
+			white_master.next.Draw ();
+	}
 
 }
