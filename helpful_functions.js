@@ -126,6 +126,11 @@ function Lerp (a, b, val) {
 	return a + (b-a)*val;
 }
 
+function reset_pawn_promotion () {
+	pawn_promote_bool = false;
+	pawn_promote = null;
+}
+
 function Animate_Screen () {
 	// cur_block = null;
 	Manual_Update ();
@@ -156,4 +161,29 @@ function Animate_Screen () {
 		clearInterval (a_interval);
 		a_interval = 0;
 	}
+}
+
+function Set_Promotion_Type () {
+	
+	if (mouse_x == 3) {
+		if (mouse_y == 3) {
+			//rook
+			return "rook";
+
+		} else if (mouse_y == 4) {
+			//horse
+			return "horse";
+		}
+	} else if (mouse_x == 4) {
+		if (mouse_y == 3) {
+			//bishop
+			return "bishop"
+
+		} else if (mouse_y == 4) {
+			//queen
+			return "queen";
+		}
+	}
+
+	return null;
 }
