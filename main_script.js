@@ -198,14 +198,15 @@ function Manual_Update () {
 	//draw board
 	Draw_Board ();
 
-	//draw block
-	for (var i = 0; i < 8; i++) {
-		for (var j = 0; j < 8; j++) {
-			if (board[i*8 +j] != null) {
-				Draw_Rect (j*size, i*size, size, size, "rgba(0,0,255,0.5)");
-			}
-		}
-	}
+	//draw block---- for debugging 
+	// for (var i = 0; i < 8; i++) {
+	// 	for (var j = 0; j < 8; j++) {
+	// 		if (board[i*8 +j] != null) {
+	// 			Draw_Rect (j*size, i*size, size, size, "rgba(0,0,255,0.5)");
+	// 		}
+	// 	}
+	// }
+
 	if (cur_block != null) {
 		//draw possible moves
 		Draw_Possible_Moves (cur_block);
